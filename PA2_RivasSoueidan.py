@@ -4,7 +4,7 @@ import math
 
 class ConnectFourGame:
     def __init__(self):
-        self.board = [[' ' for _ in range(7)] for _ in range(6)]
+        self.board = [['0' for _ in range(7)] for _ in range(6)]
 
     def print_board(self):
         for row in self.board:
@@ -12,11 +12,11 @@ class ConnectFourGame:
         print()
 
     def is_legal_move(self, col):
-        return self.board[0][col] == ' '
+        return self.board[0][col] == 'O'
 
     def make_move(self, col, player):
         for row in range(5, -1, -1):
-            if self.board[row][col] == ' ':
+            if self.board[row][col] == '0':
                 self.board[row][col] = player
                 break
 
@@ -51,9 +51,17 @@ class ConnectFourAlgorithm:
         legal_moves = [col for col in range(7) if self.game.is_legal_move(col)]
         if not legal_moves:
             return None
+            
+        for col in legal_moves:
+            new_game = ConnectFourGame()
+            new_game.board = [row[:] for row in self.game.board]  # Create a copy of the board
+            new_game.make_move(col, self.player)
+            if new_game.check_win(self.player):
+                return col
+            
         return random.choice(legal_moves)
 
-    def pmcgs(self, simulations):
+    def pmcgs(self, simulations, mode):
         legal_moves = [col for col in range(7) if self.game.is_legal_move(col)]
 
         results = {}
@@ -61,23 +69,23 @@ class ConnectFourAlgorithm:
             wins = 0
             for _ in range(simulations):
                 new_game = ConnectFourGame()
-                new_game.board = [row[:] for row in self.game.board]  # Create a copy of the board
+                new_game.board = [row[:] for row in self.game.board]
                 new_game.make_move(col, self.player)
                 result = self.simulate(new_game)
-                if result == 1:  # Yellow wins
+                if result == 1:
                     wins += 1
             results[col] = wins / simulations
 
         if not results:
-            return None
+            return None, None
 
         best_move = max(results, key=results.get)
         if mode == "Verbose":
             for col, value in results.items():
                 print(f"Column {col + 1}: {value:.2f}")
-        return best_move
+        return best_move, results
 
-    def uct(self, simulations):
+    def uct(self, simulations, mode):
         legal_moves = [col for col in range(7) if self.game.is_legal_move(col)]
 
         results = {}
@@ -114,9 +122,12 @@ class ConnectFourAlgorithm:
 
 def read_board(filename):
     with open(filename, 'r') as file:
-        algorithm = file.readline().strip()
-        player = file.readline().strip()
-        board = [list(line.strip()) for _ in range(6)]
+        lines = file.readlines()
+    
+    algorithm = lines[0].strip()
+    player = lines[1].strip()
+    board = [list(line.strip()) for line in lines[2:]]
+    
     return algorithm, player, board
 
 def main():
@@ -127,23 +138,32 @@ def main():
     filename = sys.argv[1]
     mode = sys.argv[2]
     simulations = int(sys.argv[3])
-
+    print(filename)
+    print(mode)
+    print(simulations)
     algorithm, player, board = read_board(filename)
+    print(algorithm)
+    print(player)
     game = ConnectFourGame()
     game.board = board
-    algorithm = ConnectFourAlgorithm(game, player)
+    algorithm_obj = ConnectFourAlgorithm(game, player)
+    print("Board:")
+    for row in board:
+        print(' '.join(row))
 
     if algorithm == 'UR':
-        move = algorithm.ur()
+        move = algorithm_obj.ur()
+        print(f"Move selected: {move}")
     elif algorithm == 'PMCGS':
-        move = algorithm.pmcgs(simulations)
+        move, results = algorithm_obj.pmcgs(simulations, mode)
+        if mode == "Verbose":
+            print(f"Column {move + 1}: {results[move]:.2f}")
+        else:
+            print(f"Move selected: {move}")
     elif algorithm == 'UCT':
-        move = algorithm.uct(simulations)
-
-    if move is None:
-        print("No legal moves available.")
+        move = algorithm_obj.uct(simulations, mode)
     else:
-        print("FINAL Move selected:", move + 1)
+        print("Unknown algorithm")
 
 if __name__ == "__main__":
     main()
