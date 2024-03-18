@@ -4,7 +4,7 @@ import math
 
 class ConnectFourGame:
     def __init__(self):
-        self.board = [['0' for _ in range(7)] for _ in range(6)]
+        self.board = [['O' for _ in range(7)] for _ in range(6)]
 
     def print_board(self):
         for row in self.board:
@@ -16,7 +16,7 @@ class ConnectFourGame:
 
     def make_move(self, col, player):
         for row in range(5, -1, -1):
-            if self.board[row][col] == '0':
+            if self.board[row][col] == 'O':
                 self.board[row][col] = player
                 break
 
@@ -40,7 +40,7 @@ class ConnectFourGame:
         return True
 
     def check_draw(self):
-        return all(self.board[0][col] != ' ' for col in range(7))
+        return all(not self.is_legal_move(col) for col in range(7))
 
 class ConnectFourAlgorithm:
     def __init__(self, game, player):
@@ -64,29 +64,45 @@ class ConnectFourAlgorithm:
     def pmcgs(self, simulations, mode):
         legal_moves = [col for col in range(7) if self.game.is_legal_move(col)]
 
+        if simulations == 0:
+            print("Error: Number of simulations cannot be zero.")
+            return None, None
+
         results = {}
         for col in legal_moves:
-            wins = 0
+            total_wins = 0
             for _ in range(simulations):
                 new_game = ConnectFourGame()
                 new_game.board = [row[:] for row in self.game.board]
                 new_game.make_move(col, self.player)
                 result = self.simulate(new_game)
                 if result == 1:
-                    wins += 1
-            results[col] = wins / simulations
+                    total_wins += 1
+            results[col] = total_wins / simulations
+            if mode == 'Verbose':
+                print(f"Column {col + 1}: {results[col]:.2f}")
+                print(f"wi: {total_wins}")
+                print(f"ni: {simulations}")
+                print(f"Move selected: {col}")
 
         if not results:
             return None, None
 
         best_move = max(results, key=results.get)
         if mode == "Verbose":
-            for col, value in results.items():
-                print(f"Column {col + 1}: {value:.2f}")
+            print("NODE ADDED" if col == best_move else "")
+        elif mode == "Brief":
+            print(f"Best move: {best_move + 1}, Win ratio: {results[best_move]:.2f}")
         return best_move, results
+
+
 
     def uct(self, simulations, mode):
         legal_moves = [col for col in range(7) if self.game.is_legal_move(col)]
+
+        if simulations == 0:
+            print("Error: Number of simulations cannot be zero.")
+            return None
 
         results = {}
         for col in legal_moves:
@@ -107,19 +123,26 @@ class ConnectFourAlgorithm:
         if mode == "Verbose":
             for col, value in results.items():
                 print(f"V{col + 1}: {value:.2f}")
+        elif mode == "Brief":
+            print(f"Best move: {best_move + 1}")
         return best_move
 
-    def simulate(self, game):
-        # Simulate a game until it ends
-        players = ['R', 'Y']
-        current_player = players.index(self.player)
-        while True:
-            for player in players:
-                if game.check_win(player):
-                    return 1 if player == 'Y' else -1
-                elif game.check_draw():
-                    return 0
 
+    def simulate(self, game):
+        current_player = self.player
+        max_iterations = 1000  # Limit the number of iterations for the simulation
+        iterations = 0
+
+        while iterations < max_iterations:
+            if game.check_win(current_player):
+                return 1 if current_player == 'Y' else -1
+            elif game.check_draw():
+                return 0
+            current_player = 'R' if current_player == 'Y' else 'Y'
+            iterations += 1
+
+        # If the loop exceeds the maximum iterations, consider it a draw
+        return 0
 def read_board(filename):
     with open(filename, 'r') as file:
         lines = file.readlines()
@@ -133,6 +156,7 @@ def read_board(filename):
 def main():
     if len(sys.argv) != 4:
         print("Usage: python connect_four.py <input_file> <Verbose/Brief/None> <number_of_simulations>")
+
         sys.exit(1)
 
     filename = sys.argv[1]
@@ -158,6 +182,8 @@ def main():
         move, results = algorithm_obj.pmcgs(simulations, mode)
         if mode == "Verbose":
             print(f"Column {move + 1}: {results[move]:.2f}")
+        elif mode == "Brief":
+            print(f"Best move: {move + 1}, Win ratio: {results[move]:.2f}")
         else:
             print(f"Move selected: {move}")
     elif algorithm == 'UCT':
