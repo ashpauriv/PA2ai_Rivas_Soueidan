@@ -145,13 +145,12 @@ class ConnectFourAlgorithm:
             win_ratio = wi / ni if ni > 0 else 0
             results[col] = {'wi': wi, 'ni': ni, 'win_ratio': win_ratio}
 
-        best_move = max(results, key=lambda x: results[x]['win_ratio'])
-
         if mode == "Verbose":
-            print("Results:")
-            for col, result in sorted(results.items()):
-                print(f"Column {col}: wi: {result['wi']}, ni: {result['ni']}, Win Ratio: {result['win_ratio']:.2f}")
+            for col, result in results.items():
+                print(f"Column {col + 1}: wi: {result['wi']}, ni: {result['ni']}, Win Ratio: {result['win_ratio']:.2f}")
 
+        best_move = max(results, key=lambda x: results[x]['win_ratio'])
+        
         return best_move, results
 
 
